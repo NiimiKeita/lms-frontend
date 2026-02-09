@@ -13,6 +13,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "ダッシュボード", href: "/dashboard" },
   { label: "コース一覧", href: "/courses" },
+  { label: "マイコース", href: "/my-courses" },
+  { label: "プロフィール", href: "/profile" },
   { label: "コース管理", href: "/admin/courses/new", adminOnly: true },
 ];
 

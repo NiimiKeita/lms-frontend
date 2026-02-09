@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { getCourse, getLessons, deleteCourse, togglePublish } from "@/lib/courseApi";
+import { enroll, unenroll, getEnrollment } from "@/lib/enrollmentApi";
 import type { Course, Lesson } from "@/types/course";
+import type { Enrollment } from "@/types/enrollment";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import LessonList from "@/components/lessons/LessonList";
@@ -18,9 +20,11 @@ export default function CourseDetailPage() {
 
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [enrollLoading, setEnrollLoading] = useState(false);
 
   const fetchCourse = useCallback(async () => {
     setLoading(true);
@@ -32,6 +36,15 @@ export default function CourseDetailPage() {
       ]);
       setCourse(courseData);
       setLessons(lessonsData);
+
+      // 受講状態を確認
+      try {
+        const enrollmentData = await getEnrollment(courseId);
+        setEnrollment(enrollmentData);
+      } catch {
+        // 未受講の場合は404が返るので無視
+        setEnrollment(null);
+      }
     } catch {
       setError("コースの取得に失敗しました");
     } finally {
@@ -42,6 +55,35 @@ export default function CourseDetailPage() {
   useEffect(() => {
     fetchCourse();
   }, [fetchCourse]);
+
+  const handleEnroll = async () => {
+    setEnrollLoading(true);
+    setError("");
+    try {
+      const enrollmentData = await enroll(courseId);
+      setEnrollment(enrollmentData);
+    } catch {
+      setError("受講登録に失敗しました");
+    } finally {
+      setEnrollLoading(false);
+    }
+  };
+
+  const handleUnenroll = async () => {
+    if (!confirm("受講登録を取り消しますか？進捗データも失われます。")) {
+      return;
+    }
+    setEnrollLoading(true);
+    setError("");
+    try {
+      await unenroll(courseId);
+      setEnrollment(null);
+    } catch {
+      setError("受講取り消しに失敗しました");
+    } finally {
+      setEnrollLoading(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!confirm("このコースを削除してもよろしいですか？この操作は取り消せません。")) {
@@ -101,6 +143,8 @@ export default function CourseDetailPage() {
 
   if (!course) return null;
 
+  const isEnrolled = enrollment !== null;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -127,42 +171,79 @@ export default function CourseDetailPage() {
               <h1 className="text-2xl font-bold text-foreground">
                 {course.title}
               </h1>
-              <span
-                className={`inline-block px-2 py-0.5 text-xs rounded-full ${
-                  course.published
-                    ? "bg-green-100 text-green-700"
-                    : "bg-gray-100 text-gray-600"
-                }`}
-              >
-                {course.published ? "公開中" : "非公開"}
-              </span>
-            </div>
-            {isAdmin && (
-              <div className="flex gap-2 shrink-0">
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    router.push(`/admin/courses/${courseId}/edit`)
-                  }
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block px-2 py-0.5 text-xs rounded-full ${
+                    course.published
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
                 >
-                  編集
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleTogglePublish}
-                  loading={actionLoading}
-                >
-                  {course.published ? "非公開にする" : "公開する"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleDelete}
-                  loading={actionLoading}
-                >
-                  削除
-                </Button>
+                  {course.published ? "公開中" : "非公開"}
+                </span>
+                {isEnrolled && (
+                  <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">
+                    {enrollment.status === "COMPLETED" ? "完了" : "受講中"}
+                  </span>
+                )}
               </div>
-            )}
+            </div>
+            <div className="flex gap-2 shrink-0">
+              {isAdmin ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      router.push(`/admin/courses/${courseId}/edit`)
+                    }
+                  >
+                    編集
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleTogglePublish}
+                    loading={actionLoading}
+                  >
+                    {course.published ? "非公開にする" : "公開する"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleDelete}
+                    loading={actionLoading}
+                  >
+                    削除
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {isEnrolled ? (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="primary"
+                        onClick={() => router.push(`/courses/${courseId}/learn`)}
+                      >
+                        学習を続ける
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleUnenroll}
+                        loading={enrollLoading}
+                      >
+                        受講取消
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      onClick={handleEnroll}
+                      loading={enrollLoading}
+                    >
+                      このコースを受講する
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           <p className="text-foreground/70 whitespace-pre-wrap">
@@ -170,6 +251,9 @@ export default function CourseDetailPage() {
           </p>
 
           <div className="flex gap-4 text-xs text-foreground/40">
+            <span>
+              レッスン数: {lessons.length}
+            </span>
             <span>
               作成日: {new Date(course.createdAt).toLocaleDateString("ja-JP")}
             </span>
