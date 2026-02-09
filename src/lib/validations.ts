@@ -84,5 +84,34 @@ export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+export const adminCreateUserSchema = z.object({
+  email: z
+    .string()
+    .min(1, "メールアドレスを入力してください")
+    .email("有効なメールアドレスを入力してください"),
+  password: z
+    .string()
+    .min(8, "パスワードは8文字以上で入力してください"),
+  name: z
+    .string()
+    .min(1, "ユーザー名を入力してください")
+    .max(100, "ユーザー名は100文字以内で入力してください"),
+  role: z.enum(["ADMIN", "INSTRUCTOR", "LEARNER"], {
+    message: "ロールを選択してください",
+  }),
+});
+
+export const adminUpdateUserSchema = z.object({
+  name: z
+    .string()
+    .min(1, "ユーザー名を入力してください")
+    .max(100, "ユーザー名は100文字以内で入力してください"),
+  role: z.enum(["ADMIN", "INSTRUCTOR", "LEARNER"], {
+    message: "ロールを選択してください",
+  }),
+});
+
 export type CourseFormData = z.infer<typeof courseSchema>;
 export type LessonFormData = z.infer<typeof lessonSchema>;
+export type AdminCreateUserFormData = z.infer<typeof adminCreateUserSchema>;
+export type AdminUpdateUserFormData = z.infer<typeof adminUpdateUserSchema>;

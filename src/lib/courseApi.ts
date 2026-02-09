@@ -108,3 +108,22 @@ export async function reorderLessons(
 ): Promise<void> {
   await api.patch(`/courses/${courseId}/lessons/reorder`, orders);
 }
+
+// ===== Content API =====
+
+export interface LessonContent {
+  lessonId: number;
+  title: string;
+  content: string;
+  orderIndex: number;
+}
+
+export async function getLessonContent(
+  courseId: number,
+  lessonId: number
+): Promise<LessonContent> {
+  const response = await api.get<LessonContent>(
+    `/courses/${courseId}/lessons/${lessonId}/content`
+  );
+  return response.data;
+}

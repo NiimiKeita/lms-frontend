@@ -16,6 +16,8 @@ const navItems: NavItem[] = [
   { label: "マイコース", href: "/my-courses" },
   { label: "プロフィール", href: "/profile" },
   { label: "コース管理", href: "/admin/courses/new", adminOnly: true },
+  { label: "ユーザー管理", href: "/admin/users", adminOnly: true },
+  { label: "進捗管理", href: "/admin/progress", adminOnly: true },
 ];
 
 export default function Sidebar() {

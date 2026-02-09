@@ -3,13 +3,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getCourse, getLessons, getLesson } from "@/lib/courseApi";
+import { getCourse, getLessons, getLesson, getLessonContent } from "@/lib/courseApi";
+import type { LessonContent } from "@/lib/courseApi";
 import { getCourseProgress } from "@/lib/progressApi";
 import { completeLesson, uncompleteLesson } from "@/lib/progressApi";
 import type { Course, Lesson } from "@/types/course";
 import type { CourseProgress, LessonProgress } from "@/types/enrollment";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 
 export default function LearnPage() {
   const router = useRouter();
@@ -22,8 +24,22 @@ export default function LearnPage() {
   const [progress, setProgress] = useState<CourseProgress | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lessonContent, setLessonContent] = useState<LessonContent | null>(null);
+  const [contentLoading, setContentLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const fetchLessonContent = useCallback(async (lesson: Lesson) => {
+    setContentLoading(true);
+    try {
+      const content = await getLessonContent(courseId, lesson.id);
+      setLessonContent(content);
+    } catch {
+      setLessonContent(null);
+    } finally {
+      setContentLoading(false);
+    }
+  }, [courseId]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -38,16 +54,17 @@ export default function LearnPage() {
       setLessons(lessonsData);
       setProgress(progressData);
 
-      // 最初のレッスンを選択
+      // 最初のレッスンを選択してコンテンツを取得
       if (lessonsData.length > 0 && !selectedLesson) {
         setSelectedLesson(lessonsData[0]);
+        fetchLessonContent(lessonsData[0]);
       }
     } catch {
       setError("コースの読み込みに失敗しました。受講登録を確認してください。");
     } finally {
       setLoading(false);
     }
-  }, [courseId, selectedLesson]);
+  }, [courseId, selectedLesson, fetchLessonContent]);
 
   useEffect(() => {
     fetchData();
@@ -55,6 +72,7 @@ export default function LearnPage() {
 
   const handleSelectLesson = async (lesson: Lesson) => {
     setSelectedLesson(lesson);
+    fetchLessonContent(lesson);
   };
 
   const handleToggleComplete = async (lessonId: number, isCompleted: boolean) => {
@@ -218,16 +236,17 @@ export default function LearnPage() {
                 </div>
 
                 <div className="border-t border-foreground/10 pt-4">
-                  <div className="prose prose-sm max-w-none text-foreground/80">
-                    <p className="text-foreground/60 text-sm">
-                      コンテンツパス: {selectedLesson.contentPath}
-                    </p>
-                    <div className="mt-4 p-6 bg-foreground/5 rounded-lg text-center text-foreground/40">
-                      レッスンコンテンツはここに表示されます。
-                      <br />
-                      (コンテンツ表示機能は今後のSprintで実装予定)
+                  {contentLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-4 border-foreground border-t-transparent" />
                     </div>
-                  </div>
+                  ) : lessonContent ? (
+                    <MarkdownRenderer content={lessonContent.content} />
+                  ) : (
+                    <div className="p-6 bg-foreground/5 rounded-lg text-center text-foreground/40">
+                      コンテンツを読み込めませんでした。
+                    </div>
+                  )}
                 </div>
 
                 {/* ナビゲーション */}
@@ -239,7 +258,9 @@ export default function LearnPage() {
                         const currentIndex = lessons.findIndex(
                           (l) => l.id === selectedLesson.id
                         );
-                        setSelectedLesson(lessons[currentIndex - 1]);
+                        const prev = lessons[currentIndex - 1];
+                        setSelectedLesson(prev);
+                        fetchLessonContent(prev);
                       }}
                     >
                       前のレッスン
@@ -255,7 +276,9 @@ export default function LearnPage() {
                         const currentIndex = lessons.findIndex(
                           (l) => l.id === selectedLesson.id
                         );
-                        setSelectedLesson(lessons[currentIndex + 1]);
+                        const next = lessons[currentIndex + 1];
+                        setSelectedLesson(next);
+                        fetchLessonContent(next);
                       }}
                     >
                       次のレッスン
