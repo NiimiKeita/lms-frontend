@@ -57,7 +57,32 @@ export const resetPasswordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+export const courseSchema = z.object({
+  title: z
+    .string()
+    .min(1, "タイトルを入力してください")
+    .max(200, "タイトルは200文字以内で入力してください"),
+  description: z
+    .string()
+    .min(1, "説明を入力してください")
+    .max(2000, "説明は2000文字以内で入力してください"),
+});
+
+export const lessonSchema = z.object({
+  title: z
+    .string()
+    .min(1, "タイトルを入力してください")
+    .max(200, "タイトルは200文字以内で入力してください"),
+  contentPath: z
+    .string()
+    .min(1, "コンテンツパスを入力してください")
+    .max(500, "コンテンツパスは500文字以内で入力してください"),
+  published: z.boolean().optional(),
+});
+
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+export type CourseFormData = z.infer<typeof courseSchema>;
+export type LessonFormData = z.infer<typeof lessonSchema>;

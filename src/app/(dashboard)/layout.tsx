@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Header from "@/components/layout/Header";
+import Sidebar from "@/components/layout/Sidebar";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -28,7 +29,10 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="max-w-7xl mx-auto px-4 py-8">{children}</main>
+      <div className="flex">
+        <Sidebar />
+        <main className="flex-1 max-w-7xl px-6 py-8">{children}</main>
+      </div>
     </div>
   );
 }
