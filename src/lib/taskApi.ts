@@ -4,6 +4,8 @@ import type {
   Task,
   TaskSubmission,
   TaskFeedback,
+  CreateTaskRequest,
+  UpdateTaskRequest,
   CreateSubmissionRequest,
   UpdateSubmissionStatusRequest,
   CreateFeedbackRequest,
@@ -19,6 +21,33 @@ export async function getTasks(courseId: number): Promise<Task[]> {
 export async function getTask(courseId: number, taskId: number): Promise<Task> {
   const response = await api.get<Task>(`/courses/${courseId}/tasks/${taskId}`);
   return response.data;
+}
+
+export async function createTask(
+  courseId: number,
+  data: CreateTaskRequest
+): Promise<Task> {
+  const response = await api.post<Task>(`/courses/${courseId}/tasks`, data);
+  return response.data;
+}
+
+export async function updateTask(
+  courseId: number,
+  taskId: number,
+  data: UpdateTaskRequest
+): Promise<Task> {
+  const response = await api.put<Task>(
+    `/courses/${courseId}/tasks/${taskId}`,
+    data
+  );
+  return response.data;
+}
+
+export async function deleteTask(
+  courseId: number,
+  taskId: number
+): Promise<void> {
+  await api.delete(`/courses/${courseId}/tasks/${taskId}`);
 }
 
 // ===== Submission API =====

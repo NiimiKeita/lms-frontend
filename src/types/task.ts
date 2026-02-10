@@ -32,6 +32,17 @@ export interface TaskFeedback {
   createdAt: string;
 }
 
+export interface CreateTaskRequest {
+  title: string;
+  description?: string;
+  sortOrder?: number;
+}
+
+export interface UpdateTaskRequest {
+  title: string;
+  description?: string;
+}
+
 export interface CreateSubmissionRequest {
   githubUrl: string;
 }

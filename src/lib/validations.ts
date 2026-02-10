@@ -126,8 +126,21 @@ export const feedbackSchema = z.object({
     .max(5000, "コメントは5000文字以内で入力してください"),
 });
 
+export const taskSchema = z.object({
+  title: z
+    .string()
+    .min(1, "タイトルを入力してください")
+    .max(255, "タイトルは255文字以内で入力してください"),
+  description: z
+    .string()
+    .max(5000, "説明は5000文字以内で入力してください")
+    .optional()
+    .or(z.literal("")),
+});
+
 export type CourseFormData = z.infer<typeof courseSchema>;
 export type LessonFormData = z.infer<typeof lessonSchema>;
+export type TaskFormData = z.infer<typeof taskSchema>;
 export type AdminCreateUserFormData = z.infer<typeof adminCreateUserSchema>;
 export type AdminUpdateUserFormData = z.infer<typeof adminUpdateUserSchema>;
 export type SubmissionFormData = z.infer<typeof submissionSchema>;

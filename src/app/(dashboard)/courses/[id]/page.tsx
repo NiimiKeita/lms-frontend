@@ -12,6 +12,7 @@ import type { Task } from "@/types/task";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import LessonList from "@/components/lessons/LessonList";
+import TaskList from "@/components/tasks/TaskList";
 
 export default function CourseDetailPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function CourseDetailPage() {
   const courseId = Number(params.id);
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+  const isAdminOrInstructor = user?.role === "ADMIN" || user?.role === "INSTRUCTOR";
 
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -122,6 +124,15 @@ export default function CourseDetailPage() {
       setLessons(lessonsData);
     } catch {
       setError("レッスンの取得に失敗しました");
+    }
+  };
+
+  const handleTasksChange = async () => {
+    try {
+      const tasksData = await getTasks(courseId);
+      setTasks(tasksData);
+    } catch {
+      setError("課題の取得に失敗しました");
     }
   };
 
@@ -276,36 +287,13 @@ export default function CourseDetailPage() {
         onLessonsChange={handleLessonsChange}
       />
 
-      {tasks.length > 0 && (
-        <Card>
-          <h2 className="text-lg font-bold text-foreground mb-4">課題</h2>
-          <div className="space-y-2">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-foreground/10 hover:bg-foreground/5 transition-colors"
-              >
-                <div>
-                  <h3 className="text-sm font-medium text-foreground">{task.title}</h3>
-                  {task.description && (
-                    <p className="text-xs text-foreground/60 mt-0.5 line-clamp-1">
-                      {task.description}
-                    </p>
-                  )}
-                </div>
-                {isEnrolled && (
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push(`/courses/${courseId}/tasks/${task.id}`)}
-                  >
-                    提出する
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      <TaskList
+        courseId={courseId}
+        tasks={tasks}
+        isAdmin={isAdminOrInstructor}
+        isEnrolled={isEnrolled}
+        onTasksChange={handleTasksChange}
+      />
     </div>
   );
 }
