@@ -6,19 +6,46 @@ import { useAuth } from "@/context/AuthContext";
 import { getMyProgress } from "@/lib/progressApi";
 import { getMyEnrollments } from "@/lib/enrollmentApi";
 import { getCourses } from "@/lib/courseApi";
+import { getLearnerDashboard, getInstructorDashboard } from "@/lib/dashboardApi";
 import type { CourseProgress, Enrollment } from "@/types/enrollment";
 import type { Course, PageResponse } from "@/types/course";
+import type {
+  LearnerDashboardResponse,
+  InstructorDashboardResponse,
+} from "@/types/dashboard";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+
+const STATUS_LABELS: Record<string, string> = {
+  SUBMITTED: "提出済み",
+  REVIEWING: "レビュー中",
+  APPROVED: "承認",
+  REJECTED: "差し戻し",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  SUBMITTED: "bg-blue-100 text-blue-700",
+  REVIEWING: "bg-yellow-100 text-yellow-700",
+  APPROVED: "bg-green-100 text-green-700",
+  REJECTED: "bg-red-100 text-red-700",
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   const isAdmin = user?.role === "ADMIN";
+  const isInstructorOrAdmin =
+    user?.role === "INSTRUCTOR" || user?.role === "ADMIN";
 
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [progressList, setProgressList] = useState<CourseProgress[]>([]);
-  const [coursesData, setCoursesData] = useState<PageResponse<Course> | null>(null);
+  const [coursesData, setCoursesData] = useState<PageResponse<Course> | null>(
+    null
+  );
+  const [learnerData, setLearnerData] =
+    useState<LearnerDashboardResponse | null>(null);
+  const [instructorData, setInstructorData] =
+    useState<InstructorDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,15 +54,25 @@ export default function DashboardPage() {
         const promises: Promise<unknown>[] = [
           getMyEnrollments(),
           getMyProgress(),
+          getLearnerDashboard(),
         ];
         if (isAdmin) {
           promises.push(getCourses(0, 1));
         }
+        if (isInstructorOrAdmin) {
+          promises.push(getInstructorDashboard());
+        }
         const results = await Promise.all(promises);
         setEnrollments(results[0] as Enrollment[]);
         setProgressList(results[1] as CourseProgress[]);
-        if (isAdmin && results[2]) {
-          setCoursesData(results[2] as PageResponse<Course>);
+        setLearnerData(results[2] as LearnerDashboardResponse);
+        let idx = 3;
+        if (isAdmin && results[idx]) {
+          setCoursesData(results[idx] as PageResponse<Course>);
+          idx++;
+        }
+        if (isInstructorOrAdmin && results[idx]) {
+          setInstructorData(results[idx] as InstructorDashboardResponse);
         }
       } catch {
         // エラーは静かに処理
@@ -44,10 +81,12 @@ export default function DashboardPage() {
       }
     };
     fetchData();
-  }, [isAdmin]);
+  }, [isAdmin, isInstructorOrAdmin]);
 
   const activeEnrollments = enrollments.filter((e) => e.status === "ACTIVE");
-  const completedEnrollments = enrollments.filter((e) => e.status === "COMPLETED");
+  const completedEnrollments = enrollments.filter(
+    (e) => e.status === "COMPLETED"
+  );
   const totalCompletedLessons = progressList.reduce(
     (sum, p) => sum + p.completedLessons,
     0
@@ -86,6 +125,139 @@ export default function DashboardPage() {
           </p>
         </Card>
       </div>
+
+      {/* INSTRUCTOR/ADMIN: 未レビュー提出カード */}
+      {!loading && isInstructorOrAdmin && instructorData && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">
+            提出レビュー
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="!border-yellow-200 !bg-yellow-50">
+              <h3 className="font-semibold text-yellow-800">未レビュー提出</h3>
+              <p className="text-3xl font-bold mt-2 text-yellow-700">
+                {instructorData.unreviewedCount}
+              </p>
+              <Button
+                variant="secondary"
+                className="mt-3 !text-sm"
+                onClick={() => router.push("/admin/submissions")}
+              >
+                レビューへ
+              </Button>
+            </Card>
+            {instructorData.recentSubmissions.length > 0 && (
+              <Card>
+                <h3 className="font-semibold text-foreground/80 mb-3">
+                  最近の提出
+                </h3>
+                <div className="space-y-2">
+                  {instructorData.recentSubmissions.slice(0, 5).map((s) => (
+                    <div
+                      key={s.submissionId}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <div className="truncate flex-1 mr-2">
+                        <span className="text-foreground font-medium">
+                          {s.learnerName}
+                        </span>
+                        <span className="text-foreground/40 mx-1">-</span>
+                        <span className="text-foreground/60">
+                          {s.taskTitle}
+                        </span>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${
+                          STATUS_COLORS[s.status] || ""
+                        }`}
+                      >
+                        {STATUS_LABELS[s.status] || s.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 未提出課題 */}
+      {!loading &&
+        learnerData &&
+        learnerData.pendingTasks.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">
+              未提出の課題
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {learnerData.pendingTasks.slice(0, 4).map((task) => (
+                <Card key={task.taskId} className="!p-4">
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-foreground text-sm">
+                      {task.taskTitle}
+                    </h3>
+                    <p className="text-xs text-foreground/60">
+                      {task.courseTitle}
+                    </p>
+                    <Button
+                      variant="secondary"
+                      className="!px-3 !py-1 !text-xs"
+                      onClick={() =>
+                        router.push(
+                          `/courses/${task.courseId}/tasks/${task.taskId}`
+                        )
+                      }
+                    >
+                      提出する
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+      {/* 最近のフィードバック */}
+      {!loading &&
+        learnerData &&
+        learnerData.recentFeedbacks.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">
+              新着フィードバック
+            </h2>
+            <div className="space-y-3">
+              {learnerData.recentFeedbacks.map((fb, idx) => (
+                <Card key={idx} className="!p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-foreground text-sm">
+                        {fb.taskTitle}
+                      </h3>
+                      <p className="text-xs text-foreground/60 mt-1">
+                        {fb.reviewerName} さんからのフィードバック
+                      </p>
+                      <p className="text-sm text-foreground/80 mt-2 line-clamp-2">
+                        {fb.comment}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="!px-3 !py-1 !text-xs shrink-0"
+                      onClick={() =>
+                        router.push(
+                          `/admin/submissions/${fb.submissionId}`
+                        )
+                      }
+                    >
+                      確認する
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
       {/* 受講中コース一覧 */}
       {!loading && progressList.length > 0 && (

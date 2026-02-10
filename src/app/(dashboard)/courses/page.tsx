@@ -19,19 +19,27 @@ export default function CoursesPage() {
   const [page, setPage] = useState(0);
   const [keyword, setKeyword] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const fetchCourses = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const data = await getCourses(page, 10, keyword || undefined);
+      const data = await getCourses(
+        page,
+        10,
+        keyword || undefined,
+        isAdmin ? statusFilter : undefined,
+        sortOrder
+      );
       setCourses(data);
     } catch {
       setError("コースの取得に失敗しました");
     } finally {
       setLoading(false);
     }
-  }, [page, keyword]);
+  }, [page, keyword, sortOrder, statusFilter, isAdmin]);
 
   useEffect(() => {
     fetchCourses();
@@ -78,6 +86,46 @@ export default function CoursesPage() {
         )}
       </form>
 
+      {/* フィルタ */}
+      <div className="flex gap-4 items-center">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-foreground/60">
+            並び順
+          </label>
+          <select
+            value={sortOrder}
+            onChange={(e) => {
+              setSortOrder(e.target.value);
+              setPage(0);
+            }}
+            className="px-3 py-1.5 rounded-lg border border-foreground/20 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+          >
+            <option value="newest">新しい順</option>
+            <option value="oldest">古い順</option>
+            <option value="title">タイトル順</option>
+          </select>
+        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-foreground/60">
+              公開状態
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(0);
+              }}
+              className="px-3 py-1.5 rounded-lg border border-foreground/20 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="all">すべて</option>
+              <option value="published">公開のみ</option>
+              <option value="draft">非公開のみ</option>
+            </select>
+          </div>
+        )}
+      </div>
+
       {error && (
         <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
           {error}
@@ -118,7 +166,8 @@ export default function CoursesPage() {
                     {course.description}
                   </p>
                   <p className="text-xs text-foreground/40">
-                    作成日: {new Date(course.createdAt).toLocaleDateString("ja-JP")}
+                    作成日:{" "}
+                    {new Date(course.createdAt).toLocaleDateString("ja-JP")}
                   </p>
                 </div>
               </Card>

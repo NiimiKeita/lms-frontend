@@ -17,6 +17,7 @@ export default function MyCoursesPage() {
   const [progressList, setProgressList] = useState<CourseProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("active");
+  const [searchKeyword, setSearchKeyword] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,8 +42,11 @@ export default function MyCoursesPage() {
   };
 
   const filteredEnrollments = enrollments.filter((e) => {
-    if (activeTab === "active") return e.status === "ACTIVE";
-    if (activeTab === "completed") return e.status === "COMPLETED";
+    if (activeTab === "active" && e.status !== "ACTIVE") return false;
+    if (activeTab === "completed" && e.status !== "COMPLETED") return false;
+    if (searchKeyword) {
+      return e.courseTitle.toLowerCase().includes(searchKeyword.toLowerCase());
+    }
     return true;
   });
 
@@ -71,6 +75,22 @@ export default function MyCoursesPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-foreground">マイコース</h1>
+
+      {/* キーワード検索 */}
+      <div className="flex gap-3">
+        <input
+          type="text"
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+          placeholder="コース名で絞り込み..."
+          className="flex-1 px-3 py-2.5 rounded-lg border border-foreground/20 text-sm bg-background text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+        />
+        {searchKeyword && (
+          <Button variant="outline" onClick={() => setSearchKeyword("")}>
+            クリア
+          </Button>
+        )}
+      </div>
 
       {/* タブ */}
       <div className="flex gap-1 border-b border-foreground/10">

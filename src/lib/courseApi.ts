@@ -16,11 +16,19 @@ import type {
 export async function getCourses(
   page: number = 0,
   size: number = 10,
-  keyword?: string
+  keyword?: string,
+  status?: string,
+  sort?: string
 ): Promise<PageResponse<Course>> {
   const params: Record<string, string | number> = { page, size };
   if (keyword) {
     params.keyword = keyword;
+  }
+  if (status) {
+    params.status = status;
+  }
+  if (sort) {
+    params.sort = sort;
   }
   const response = await api.get<PageResponse<Course>>("/courses", { params });
   return response.data;
