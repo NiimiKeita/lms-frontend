@@ -111,7 +111,24 @@ export const adminUpdateUserSchema = z.object({
   }),
 });
 
+export const submissionSchema = z.object({
+  githubUrl: z
+    .string()
+    .min(1, "GitHub URLを入力してください")
+    .url("有効なURLを入力してください")
+    .max(500, "URLは500文字以内で入力してください"),
+});
+
+export const feedbackSchema = z.object({
+  comment: z
+    .string()
+    .min(1, "コメントを入力してください")
+    .max(5000, "コメントは5000文字以内で入力してください"),
+});
+
 export type CourseFormData = z.infer<typeof courseSchema>;
 export type LessonFormData = z.infer<typeof lessonSchema>;
 export type AdminCreateUserFormData = z.infer<typeof adminCreateUserSchema>;
 export type AdminUpdateUserFormData = z.infer<typeof adminUpdateUserSchema>;
+export type SubmissionFormData = z.infer<typeof submissionSchema>;
+export type FeedbackFormData = z.infer<typeof feedbackSchema>;

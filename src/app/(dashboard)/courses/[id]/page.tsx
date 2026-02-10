@@ -5,8 +5,10 @@ import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { getCourse, getLessons, deleteCourse, togglePublish } from "@/lib/courseApi";
 import { enroll, unenroll, getEnrollment } from "@/lib/enrollmentApi";
+import { getTasks } from "@/lib/taskApi";
 import type { Course, Lesson } from "@/types/course";
 import type { Enrollment } from "@/types/enrollment";
+import type { Task } from "@/types/task";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import LessonList from "@/components/lessons/LessonList";
@@ -20,6 +22,7 @@ export default function CourseDetailPage() {
 
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -30,12 +33,14 @@ export default function CourseDetailPage() {
     setLoading(true);
     setError("");
     try {
-      const [courseData, lessonsData] = await Promise.all([
+      const [courseData, lessonsData, tasksData] = await Promise.all([
         getCourse(courseId),
         getLessons(courseId),
+        getTasks(courseId),
       ]);
       setCourse(courseData);
       setLessons(lessonsData);
+      setTasks(tasksData);
 
       // 受講状態を確認
       try {
@@ -270,6 +275,37 @@ export default function CourseDetailPage() {
         isAdmin={isAdmin}
         onLessonsChange={handleLessonsChange}
       />
+
+      {tasks.length > 0 && (
+        <Card>
+          <h2 className="text-lg font-bold text-foreground mb-4">課題</h2>
+          <div className="space-y-2">
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center justify-between p-3 rounded-lg border border-foreground/10 hover:bg-foreground/5 transition-colors"
+              >
+                <div>
+                  <h3 className="text-sm font-medium text-foreground">{task.title}</h3>
+                  {task.description && (
+                    <p className="text-xs text-foreground/60 mt-0.5 line-clamp-1">
+                      {task.description}
+                    </p>
+                  )}
+                </div>
+                {isEnrolled && (
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push(`/courses/${courseId}/tasks/${task.id}`)}
+                  >
+                    提出する
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
