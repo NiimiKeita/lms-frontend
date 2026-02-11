@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { getCourses } from "@/lib/courseApi";
+import { getCategories } from "@/lib/categoryApi";
 import type { Course, PageResponse } from "@/types/course";
+import type { Category } from "@/types/category";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 
@@ -21,6 +23,14 @@ export default function CoursesPage() {
   const [searchInput, setSearchInput] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+
+  useEffect(() => {
+    getCategories()
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
 
   const fetchCourses = useCallback(async () => {
     setLoading(true);
@@ -87,7 +97,7 @@ export default function CoursesPage() {
       </form>
 
       {/* フィルタ */}
-      <div className="flex gap-4 items-center">
+      <div className="flex gap-4 items-center flex-wrap">
         <div className="flex items-center gap-2">
           <label className="text-xs font-medium text-foreground/60">
             並び順
@@ -121,6 +131,30 @@ export default function CoursesPage() {
               <option value="all">すべて</option>
               <option value="published">公開のみ</option>
               <option value="draft">非公開のみ</option>
+            </select>
+          </div>
+        )}
+        {categories.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-foreground/60">
+              カテゴリ
+            </label>
+            <select
+              value={selectedCategory ?? ""}
+              onChange={(e) => {
+                setSelectedCategory(
+                  e.target.value ? Number(e.target.value) : null
+                );
+                setPage(0);
+              }}
+              className="px-3 py-1.5 rounded-lg border border-foreground/20 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">すべて</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
             </select>
           </div>
         )}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import Button from "@/components/ui/Button";
+import NotificationBell from "@/components/layout/NotificationBell";
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -15,6 +16,7 @@ export default function Header() {
         </Link>
 
         <div className="flex items-center gap-4">
+          <NotificationBell />
           <span className="text-sm text-foreground/60">
             {user?.username}
             {user?.role === "ADMIN" && (

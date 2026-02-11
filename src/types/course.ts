@@ -4,6 +4,7 @@ export interface Course {
   title: string;
   description: string;
   published: boolean;
+  thumbnailUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -11,11 +12,13 @@ export interface Course {
 export interface CreateCourseRequest {
   title: string;
   description: string;
+  thumbnailUrl?: string;
 }
 
 export interface UpdateCourseRequest {
   title: string;
   description: string;
+  thumbnailUrl?: string;
 }
 
 export interface CourseResponse extends Course {}
