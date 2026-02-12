@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Header from "@/components/layout/Header";
@@ -9,6 +9,7 @@ import Sidebar from "@/components/layout/Sidebar";
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -28,10 +29,13 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onMenuToggle={() => setSidebarOpen(true)} />
       <div className="flex">
         <Sidebar />
-        <main className="flex-1 max-w-7xl px-6 py-8">{children}</main>
+        {sidebarOpen && (
+          <Sidebar mobile onClose={() => setSidebarOpen(false)} />
+        )}
+        <main className="flex-1 max-w-7xl px-4 md:px-6 py-8">{children}</main>
       </div>
     </div>
   );

@@ -6,11 +6,14 @@ import { useAuth } from "@/context/AuthContext";
 import { getCourse, getLessons, deleteCourse, togglePublish } from "@/lib/courseApi";
 import { enroll, unenroll, getEnrollment } from "@/lib/enrollmentApi";
 import { getTasks } from "@/lib/taskApi";
+import { getReviews, getMyReview, createReview, updateReview, deleteReview } from "@/lib/reviewApi";
 import type { Course, Lesson } from "@/types/course";
 import type { Enrollment } from "@/types/enrollment";
 import type { Task } from "@/types/task";
+import type { Review } from "@/types/review";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import StarRating from "@/components/ui/StarRating";
 import LessonList from "@/components/lessons/LessonList";
 import TaskList from "@/components/tasks/TaskList";
 
@@ -30,6 +33,11 @@ export default function CourseDetailPage() {
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [enrollLoading, setEnrollLoading] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [myReview, setMyReview] = useState<Review | null>(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const fetchCourse = useCallback(async () => {
     setLoading(true);
@@ -49,8 +57,24 @@ export default function CourseDetailPage() {
         const enrollmentData = await getEnrollment(courseId);
         setEnrollment(enrollmentData);
       } catch {
-        // 未受講の場合は404が返るので無視
         setEnrollment(null);
+      }
+
+      // レビュー取得
+      try {
+        const reviewsData = await getReviews(courseId);
+        setReviews(reviewsData.content);
+      } catch {
+        // ignore
+      }
+
+      try {
+        const myReviewData = await getMyReview(courseId);
+        setMyReview(myReviewData);
+        setReviewRating(myReviewData.rating);
+        setReviewComment(myReviewData.comment || "");
+      } catch {
+        setMyReview(null);
       }
     } catch {
       setError("コースの取得に失敗しました");
@@ -124,6 +148,44 @@ export default function CourseDetailPage() {
       setLessons(lessonsData);
     } catch {
       setError("レッスンの取得に失敗しました");
+    }
+  };
+
+  const handleReviewSubmit = async () => {
+    if (reviewRating === 0) return;
+    setReviewSubmitting(true);
+    try {
+      if (myReview) {
+        const updated = await updateReview(courseId, { rating: reviewRating, comment: reviewComment || undefined });
+        setMyReview(updated);
+      } else {
+        const created = await createReview(courseId, { rating: reviewRating, comment: reviewComment || undefined });
+        setMyReview(created);
+      }
+      const reviewsData = await getReviews(courseId);
+      setReviews(reviewsData.content);
+      const courseData = await getCourse(courseId);
+      setCourse(courseData);
+    } catch {
+      setError("レビューの投稿に失敗しました");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const handleReviewDelete = async () => {
+    if (!confirm("レビューを削除しますか？")) return;
+    try {
+      await deleteReview(courseId);
+      setMyReview(null);
+      setReviewRating(0);
+      setReviewComment("");
+      const reviewsData = await getReviews(courseId);
+      setReviews(reviewsData.content);
+      const courseData = await getCourse(courseId);
+      setCourse(courseData);
+    } catch {
+      setError("レビューの削除に失敗しました");
     }
   };
 
@@ -266,6 +328,15 @@ export default function CourseDetailPage() {
             {course.description}
           </p>
 
+          {course.averageRating != null && (
+            <div className="flex items-center gap-2">
+              <StarRating rating={Math.round(course.averageRating)} size="sm" />
+              <span className="text-sm text-foreground/60">
+                {course.averageRating.toFixed(1)} ({course.reviewCount}件)
+              </span>
+            </div>
+          )}
+
           <div className="flex gap-4 text-xs text-foreground/40">
             <span>
               レッスン数: {lessons.length}
@@ -294,6 +365,73 @@ export default function CourseDetailPage() {
         isEnrolled={isEnrolled}
         onTasksChange={handleTasksChange}
       />
+
+      {/* レビューセクション */}
+      <Card>
+        <h2 className="text-lg font-bold text-foreground mb-4">レビュー</h2>
+
+        {isEnrolled && (
+          <div className="mb-6 p-4 border border-foreground/10 rounded-lg">
+            <h3 className="text-sm font-medium text-foreground mb-2">
+              {myReview ? "レビューを編集" : "レビューを投稿"}
+            </h3>
+            <div className="mb-3">
+              <StarRating
+                rating={reviewRating}
+                interactive
+                onChange={setReviewRating}
+              />
+            </div>
+            <textarea
+              value={reviewComment}
+              onChange={(e) => setReviewComment(e.target.value)}
+              placeholder="コメントを入力（任意）"
+              rows={3}
+              className="w-full px-3 py-2 border border-foreground/20 rounded-lg text-sm bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            />
+            <div className="flex gap-2 mt-2">
+              <Button
+                onClick={handleReviewSubmit}
+                loading={reviewSubmitting}
+                disabled={reviewRating === 0}
+              >
+                {myReview ? "更新" : "投稿"}
+              </Button>
+              {myReview && (
+                <Button variant="outline" onClick={handleReviewDelete}>
+                  削除
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {reviews.length === 0 ? (
+          <p className="text-sm text-foreground/50">レビューはまだありません</p>
+        ) : (
+          <div className="space-y-4">
+            {reviews.map((review) => (
+              <div
+                key={review.id}
+                className="p-3 border border-foreground/10 rounded-lg"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-medium text-foreground">
+                    {review.userName}
+                  </span>
+                  <StarRating rating={review.rating} size="sm" />
+                </div>
+                {review.comment && (
+                  <p className="text-sm text-foreground/70">{review.comment}</p>
+                )}
+                <p className="text-xs text-foreground/40 mt-1">
+                  {new Date(review.createdAt).toLocaleDateString("ja-JP")}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

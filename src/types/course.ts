@@ -5,6 +5,8 @@ export interface Course {
   description: string;
   published: boolean;
   thumbnailUrl: string | null;
+  averageRating: number | null;
+  reviewCount: number | null;
   createdAt: string;
   updatedAt: string;
 }
